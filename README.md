@@ -1,3 +1,5 @@
+# Do not download this, I will announce when it is ready; it currently does nothing and is only here for testing.
+
 This is the launcher for SpectreRevival. Here's how it works:
 
 1) it checks if steam is installed (via registry keys).
