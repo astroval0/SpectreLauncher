@@ -11,3 +11,6 @@ This is the launcher for SpectreRevival. Here's how it works:
 6) if all of those are good then it will launch SpectreDivide with the correct ENVs (steamid and appid)
 
    todo: post req to backend with steamid for account linking
+
+
+if you do download, download the TEST release from the releases tab, simply just the EXE and run it.
