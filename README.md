@@ -9,8 +9,7 @@ This is the launcher for SpectreRevival. Here's how it works:
 4) it checks if steam is currently running (if not it will start it automatically).
 5) it checks the currently signed in steam user's steamid64.
 6) if all of those are good then it will launch SpectreDivide with the correct ENVs (steamid and appid)
-
-   todo: post req to backend with steamid for account linking
+7) it will then wait for a specific mem page to become available, that is the signal to make a post request to the backend with the users steamid. this is needed for logging in.
 
 
 if you do download, download the TEST release from the releases tab, simply just the EXE and run it.
