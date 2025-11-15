@@ -1,3 +1,5 @@
+# Do not download this, I will announce when it is ready; it currently does nothing and is only here for testing.
+
 This is the launcher for SpectreRevival. Here's how it works:
 
 1) it checks if steam is installed (via registry keys).
@@ -7,3 +9,8 @@ This is the launcher for SpectreRevival. Here's how it works:
 4) it checks if steam is currently running (if not it will start it automatically).
 5) it checks the currently signed in steam user's steamid64.
 6) if all of those are good then it will launch SpectreDivide with the correct ENVs (steamid and appid)
+
+   todo: post req to backend with steamid for account linking
+
+
+if you do download, download the TEST release from the releases tab, simply just the EXE and run it.
