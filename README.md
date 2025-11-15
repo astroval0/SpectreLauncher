@@ -1,5 +1,4 @@
-# Do not download this, I will announce when it is ready; it currently does nothing and is only here for testing.
-
+It is currently ready, but there are no backend servers consistently up right now so this is just here doing nothing.
 This is the launcher for SpectreRevival. Here's how it works:
 
 1) it checks if steam is installed (via registry keys).
@@ -12,4 +11,4 @@ This is the launcher for SpectreRevival. Here's how it works:
 7) it will then wait for a specific mem page to become available, that is the signal to make a post request to the backend with the users steamid. this is needed for logging in.
 
 
-if you do download, download the TEST release from the releases tab, simply just the EXE and run it.
+if you do download, download the 1.1 release from the releases tab, simply just the EXE and run it. this is how you will play the game.
