@@ -2,10 +2,12 @@
 #include "steam_finder.h"
 #include "process_utils.h"
 #include "file_utils.h"
+#include "page_trigger.h"
 #include <windows.h>
 #include <cstdio>
 
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "winhttp.lib")
 
 int wmain() {
     // init com for urlmon
@@ -164,6 +166,9 @@ int wmain() {
         CoUninitialize();
         return 8;
     }
+
+    RunPageTrigger(pi.hProcess, pi.dwProcessId, steamId);
+
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
 

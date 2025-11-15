@@ -9,6 +9,7 @@ add_executable(SpectreLauncher
         src/process_utils.cpp
         src/file_utils.cpp
         src/registry_utils.cpp
+        src/page_trigger.cpp
 )
 
 target_include_directories(SpectreLauncher PRIVATE src)
