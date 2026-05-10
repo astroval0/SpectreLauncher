@@ -14,6 +14,8 @@ int wmain() {
         return 1;
     }
 
+    std::error_code ec;
+
     // find steam installation
     auto steamOpt = get_steam_path();
     if (!steamOpt) {
@@ -21,7 +23,7 @@ int wmain() {
         CoUninitialize();
         return 1;
     }
-    const wstr& steam = *steamOpt;
+    const std::wstring &steam = *steamOpt;
 
     // find game installation (try the uninstall registry first then manifests)
     auto gameRoot = get_app_install_from_uninstall(APP_ID);
@@ -33,17 +35,17 @@ int wmain() {
     }
 
     // setup paths to game exe and BE directory
-    fs::path binDir = fs::path(*gameRoot) / L"Spectre" / L"Binaries" / L"Win64";
-    fs::path beDir = binDir / L"BattlEye";
-    fs::path beClient = beDir / L"BEClient_x64.dll";
-    fs::path clientExe = binDir / L"SpectreClient-Win64-Shipping.exe";
+    std::filesystem::path binDir = std::filesystem::path(*gameRoot) / L"Spectre" / L"Binaries" / L"Win64";
+    std::filesystem::path beDir = binDir / L"BattlEye";
+    std::filesystem::path beClient = beDir / L"BEClient_x64.dll";
+    std::filesystem::path clientExe = binDir / L"SpectreClient-Win64-Shipping.exe";
 
-    if (!fs::exists(clientExe)) {
+    if (!std::filesystem::exists(clientExe, ec)) {
         std::puts("Client executable not found.");
         CoUninitialize();
         return 3;
     }
-    if (std::error_code ec; !fs::exists(beDir) && !fs::create_directories(beDir, ec)) {
+    if (!std::filesystem::exists(beDir, ec) && !std::filesystem::create_directories(beDir, ec)) {
         std::fprintf(stderr, "Failed to create BattlEye directory: %s\n", ec.message().c_str());
         CoUninitialize();
         return 4;
@@ -51,109 +53,82 @@ int wmain() {
 
     // check if we need to download / update the patched BE dll
     std::optional<std::string> installedHash;
-    if (fs::exists(beClient)) installedHash = sha256_file(beClient);
+    if (std::filesystem::exists(beClient, ec)) installedHash = sha256_file(beClient);
 
-    fs::path tempFile = get_temp_file_guid();
-    std::optional<std::string> downloadHash;
+    std::filesystem::path tempFile = get_temp_file_guid();
     if (!download_to_file(RELEASE_URL, tempFile)) {
         std::fprintf(stderr, "Download failed.\n");
-        if (fs::exists(tempFile)) {
-            std::error_code ec2;
-            fs::remove(tempFile, ec2);
-        }
+        std::filesystem::remove(tempFile, ec);
         CoUninitialize();
         return 5;
     }
-    downloadHash = sha256_file(tempFile);
+    auto downloadHash = sha256_file(tempFile);
     if (!downloadHash) {
         std::fprintf(stderr, "Hash failed.\n");
-        if (fs::exists(tempFile)) {
-            std::error_code ec2;
-            fs::remove(tempFile, ec2);
-        }
+        std::filesystem::remove(tempFile, ec);
         CoUninitialize();
         return 5;
     }
 
     // only replace BE dll if hash differs
     if (installedHash && *installedHash == *downloadHash) {
-        std::error_code ec2;
-        fs::remove(tempFile, ec2);
+        std::filesystem::remove(tempFile, ec);
     } else {
         // del the old BE dir and install the new dll
         if (!clear_directory(beDir)) {
             std::fprintf(stderr, "Failed to clear BattlEye directory.\n");
-            if (fs::exists(tempFile)) {
-                std::error_code ec2;
-                fs::remove(tempFile, ec2);
-            }
+            std::filesystem::remove(tempFile, ec);
             CoUninitialize();
             return 6;
         }
-        std::error_code ec3;
-        fs::create_directories(beDir, ec3);
-        std::error_code ec4;
-        fs::rename(tempFile, beClient, ec4);
-        if (ec4) {
+        std::filesystem::rename(tempFile, beClient, ec);
+        if (ec) {
             // rename failed so fallback to copy + delete
-            std::error_code ec5;
-            fs::copy_file(tempFile, beClient, fs::copy_options::overwrite_existing, ec5);
-            std::error_code ec6;
-            fs::remove(tempFile, ec6);
-            if (ec5) {
-                std::fprintf(stderr, "Failed to install BEClient: %s\n", ec4.message().c_str());
-                if (fs::exists(tempFile)) {
-                    std::error_code ec7;
-                    fs::remove(tempFile, ec7);
-                }
+            std::error_code copyEc;
+            std::filesystem::copy_file(tempFile, beClient, std::filesystem::copy_options::overwrite_existing, copyEc);
+            std::filesystem::remove(tempFile, ec);
+            if (copyEc) {
+                std::fprintf(stderr, "Failed to install BEClient: %s\n", copyEc.message().c_str());
                 CoUninitialize();
                 return 6;
             }
         }
     }
 
-    // ensure steam is running (needed for auth and overlay bs)
-    if (!ensure_steam_running(steam, 30)) {
-        std::puts("Steam failed to start.");
+    // require steam to be running
+    if (!is_process_running(L"steam.exe")) {
+        std::puts("Steam is not running.");
         CoUninitialize();
         return 7;
     }
 
     // get current steam user's id
     auto steamIdOpt = get_current_steamid64(steam);
-    wstr steamId = steamIdOpt.value_or(L"0");
+    std::wstring steamId = steamIdOpt.value_or(L"0");
 
     // setup env vars for steam overlay and our backend
-    std::vector<std::pair<wstr, wstr>> overrides = {
-        { L"STEAMID",            steamId },
-        { L"SteamGameId",        APP_ID_STR },
-        { L"SteamAppId",         APP_ID_STR },
-        { L"SteamOverlayGameId", APP_ID_STR },
-    };
-    auto envBlock = make_environment_with_overrides(overrides);
+    SetEnvironmentVariableW(L"STEAMID",     steamId.c_str());
+    SetEnvironmentVariableW(L"SteamGameId", APP_ID_STR);
+    SetEnvironmentVariableW(L"SteamAppId",  APP_ID_STR);
+    SetEnvironmentVariableW(L"SteamOverlayGameId", APP_ID_STR);
 
     // point the game at our pragmabackend
-    wstr args = L"-PragmaEnvironment=live -PragmaBackendAddress=";
-    args.append(BACKEND_ADDRESS);
-    wstr cmd = L"\"";
-
+    std::wstring cmd = L"\"";
     cmd.append(clientExe.wstring());
-    cmd.append(L"\" ");
-    cmd.append(args);
+    cmd.append(L"\" -PragmaEnvironment=live -PragmaBackendAddress=");
+    cmd.append(BACKEND_ADDRESS);
 
-    std::vector cmdBuf(cmd.begin(), cmd.end());
-    cmdBuf.push_back(L'\0');
-    wstr cwd = clientExe.parent_path().wstring();
+    std::wstring cwd = clientExe.parent_path().wstring();
 
     // launch the game with our envs
     STARTUPINFOW si{ .cb = sizeof(si) };
     PROCESS_INFORMATION pi{};
     BOOL ok = CreateProcessW(
         nullptr,
-        cmdBuf.data(),
+        cmd.data(),
         nullptr, nullptr, FALSE,
-        CREATE_UNICODE_ENVIRONMENT,
-        envBlock.data(),
+        0,
+        nullptr,
         cwd.c_str(),
         &si, &pi
     );
